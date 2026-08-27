@@ -6,6 +6,7 @@ type Ctx = {
   model: any;
   entryId: string;
   setEntryId: (id: string) => void;
+  resolved: boolean;
   loadingModel: boolean;
   loadingUser: boolean;
   error: string | null;
@@ -21,10 +22,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [model, setModel] = useState<any>(null);
   const [entryId, setEntryIdState] = useState<string>("");
   const [user, setUser] = useState<any>(null);
+  const [resolved, setResolved] = useState(false);
   const [loadingUser, setLoadingUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // load model.json + resolve initial entry id
+  // load model.json + read any saved id (NO auto-default — first-timers onboard)
   useEffect(() => {
     fetch("/data/model.json", { cache: "no-store" })
       .then((r) => r.json())
@@ -32,9 +34,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setModel(m);
         let saved = "";
         try { saved = localStorage.getItem(KEY) || ""; } catch {}
-        setEntryIdState(saved || String(m.config?.default_entry || ""));
+        setEntryIdState(saved);
       })
-      .catch(() => setError("Failed to load model data."));
+      .catch(() => setError("Failed to load model data."))
+      .finally(() => setResolved(true));
   }, []);
 
   const setEntryId = useCallback((id: string) => {
@@ -77,7 +80,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <UserCtx.Provider
-      value={{ model, entryId, setEntryId, loadingModel: !model, loadingUser, error, user }}
+      value={{ model, entryId, setEntryId, resolved, loadingModel: !model, loadingUser, error, user }}
     >
       {children}
     </UserCtx.Provider>
