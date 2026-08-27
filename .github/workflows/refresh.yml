@@ -1,0 +1,54 @@
+name: Refresh FPL model
+
+on:
+  schedule:
+    - cron: "0 * * * *"        # hourly (UTC) — catches results after each match
+  workflow_dispatch: {}          # manual "Run workflow" button
+  push:
+    branches: [main]
+    paths:
+      - "fpl_engine/**"
+      - "fpl_refresh.py"
+      - ".github/workflows/refresh.yml"
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # persist the immutable last-season history cache between runs
+      - name: Cache FPL history
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: fpl-history-v1
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run engine (writes web/public/data/model.json)
+        run: python fpl_refresh.py
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name "carnage-bot"
+          git config user.email "actions@github.com"
+          git add -f web/public/data/model.json
+          if git diff --staged --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "chore: refresh model $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi

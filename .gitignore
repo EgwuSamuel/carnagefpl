@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Engine cache & local outputs (NOT the web data JSON, which must be committed)
+/data/
+*.xlsx
+~$*
+# personal/local images (add a logo deliberately if you want one)
+Carnage.jpeg
+
+# Node / Next.js
+web/node_modules/
+web/.next/
+web/out/
+web/next-env.d.ts
+.DS_Store
+*.log
+
+# Keep the published dashboard data
+!web/public/data/
