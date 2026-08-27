@@ -17,8 +17,14 @@ export default function Nav() {
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md bg-ink-900/70 border-b border-white/10">
       <div className="max-w-6xl mx-auto px-4 flex items-center gap-1 h-14">
-        <Link href="/" className="flex items-center gap-2 mr-4 shrink-0">
-          <span className="text-xl font-black tracking-tight">
+        <Link href="/" className="flex items-center gap-2.5 mr-4 shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.jpg"
+            alt="Carnage FPL"
+            className="h-9 w-9 rounded-full object-cover ring-1 ring-white/15 shadow-glow"
+          />
+          <span className="text-xl font-black tracking-tight hidden sm:inline">
             <span className="text-fpl-pink">CARNAGE</span>
             <span className="text-fpl-cyan">FPL</span>
           </span>
