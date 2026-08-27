@@ -65,12 +65,12 @@ export default function Overview() {
                 </button>
               ))}
             </div>
-            <RankChart projection={proj} rankNow={e?.overall_rank} nextEvent={meta?.next_event} horizon={horizon === 5 ? 5 : undefined} />
+            <RankChart projection={proj} planLine={user?.rankWithPlan?.projection} rankNow={e?.overall_rank} nextEvent={meta?.next_event} horizon={horizon === 5 ? 5 : undefined} />
             <p className="text-xs text-white/40 mt-3 leading-relaxed">
-              Pink line = projected overall rank if you keep this squad; shaded band = 10th–90th
-              percentile (Monte-Carlo). Your team is measured against the ownership template, so a
-              great start regresses unless you build an edge — use the{" "}
-              <span className="text-fpl-cyan">Transfers</span> tab to bend the curve up.
+              <span className="text-fpl-pink">Pink</span> = rank if you hold this squad (shaded band =
+              10th–90th percentile, Monte-Carlo). <span className="text-fpl-green">Green dashed</span> =
+              rank if you apply the recommended 5-GW transfers — the gap between them is the edge those
+              moves buy you. See the <span className="text-fpl-cyan">Transfers</span> tab for the moves.
             </p>
           </div>
 

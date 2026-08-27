@@ -61,7 +61,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const pickIds = squad.map((p: any) => p.id);
         const rank = projectRank(model, d.entry, d.history, pickIds, captainId);
         const transfers = planTransfers(model, pickIds, rank._bank || 0);
-        setUser({ entry: d.entry, history: d.history, squad, captainId, rank, transfers });
+        // second line: rank if you APPLY the recommended 5-GW transfer path
+        const plan = (transfers?.plan_5gw || [])
+          .filter((r: any) => r.out_id)
+          .map((r: any) => ({ gw: r.gw, out_id: r.out_id, in_id: r.in_id }));
+        const rankWithPlan = plan.length
+          ? projectRank(model, d.entry, d.history, pickIds, captainId, { transfers: plan, mc: false })
+          : null;
+        setUser({ entry: d.entry, history: d.history, squad, captainId, rank, rankWithPlan, transfers });
       })
       .catch((e) => { if (!cancelled) { setError(String(e.message || e)); setUser(null); } })
       .finally(() => { if (!cancelled) setLoadingUser(false); });

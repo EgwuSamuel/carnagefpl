@@ -85,8 +85,21 @@ function fieldTeamXp(ev: number, players: any[], exp: any) {
   return total + cap;
 }
 
-export function projectRank(model: any, entry: any, history: any, pickIds: number[], captainId: number | null) {
+export function projectRank(
+  model: any, entry: any, history: any, pickIds: number[], captainId: number | null,
+  opts: { transfers?: { gw: number; out_id: number; in_id: number }[]; mc?: boolean } = {}
+) {
   const cfg = model.config;
+  const transfers = opts.transfers || [];
+  const runMc = opts.mc !== false;
+  // squad active at a given gameweek after applying planned transfers up to it
+  const pickIdsAt = (ev: number) => {
+    if (!transfers.length) return pickIds;
+    let ids = [...pickIds];
+    for (const t of transfers)
+      if (t.gw <= ev) { ids = ids.filter((x) => x !== t.out_id); if (!ids.includes(t.in_id)) ids.push(t.in_id); }
+    return ids;
+  };
   const N = cfg.total_players;
   const cur = history?.current || [];
   const gamesPlayed = cur.length || 1;
@@ -107,7 +120,7 @@ export function projectRank(model: any, entry: any, history: any, pickIds: numbe
   for (const e of events) base[e] = fieldTeamXp(e, model.players, model.event_xp);
   const scale = Math.min(Math.max(cfg.field_avg_per_gw / (base[nextEvent] || 1), 0.6), 1.8);
   for (const e of events) {
-    yourModel[e] = pickIds.length ? teamGwPoints(pickIds, model.event_xp, byId, e, captainId) : base[e];
+    yourModel[e] = pickIds.length ? teamGwPoints(pickIdsAt(e), model.event_xp, byId, e, captainId) : base[e];
     fieldMean[e] = base[e] * scale;
     yourMean[e] = fieldMean[e] + (yourModel[e] - base[e]) * scale * cfg.edge_damping;
   }
@@ -121,22 +134,24 @@ export function projectRank(model: any, entry: any, history: any, pickIds: numbe
     proj.push({ event: e, your_pts: +yourMean[e].toFixed(1), cum_your_pts: +ytot.toFixed(1), rank_p50: Math.max(1, Math.min(Math.round(N * (1 - phi(z))), N)) });
   }
 
-  // Monte-Carlo band
-  const samples: Record<number, number[]> = {};
-  for (const e of events) samples[e] = [];
-  const sims = Math.min(cfg.mc_sims || 1500, 1500);
-  for (let s = 0; s < sims; s++) {
-    let y = totalNow, ee = gamesPlayed;
-    for (const e of events) {
-      ee += 1; y += gauss(yourMean[e], cfg.per_gw_player_sd);
-      const z = (y - fieldCumPath[e]) / sdCum(ee);
-      samples[e].push(N * (1 - phi(z)));
+  // Monte-Carlo band (skippable for the lightweight overlay line)
+  if (runMc) {
+    const samples: Record<number, number[]> = {};
+    for (const e of events) samples[e] = [];
+    const sims = Math.min(cfg.mc_sims || 1500, 1500);
+    for (let s = 0; s < sims; s++) {
+      let y = totalNow, ee = gamesPlayed;
+      for (const e of events) {
+        ee += 1; y += gauss(yourMean[e], cfg.per_gw_player_sd);
+        const z = (y - fieldCumPath[e]) / sdCum(ee);
+        samples[e].push(N * (1 - phi(z)));
+      }
     }
-  }
-  for (const row of proj) {
-    const s = samples[row.event].sort((a, b) => a - b);
-    row.rank_p10 = Math.max(1, Math.round(s[Math.floor(0.1 * s.length)]));
-    row.rank_p90 = Math.min(N, Math.round(s[Math.floor(0.9 * s.length)]));
+    for (const row of proj) {
+      const s = samples[row.event].sort((a, b) => a - b);
+      row.rank_p10 = Math.max(1, Math.round(s[Math.floor(0.1 * s.length)]));
+      row.rank_p90 = Math.min(N, Math.round(s[Math.floor(0.9 * s.length)]));
+    }
   }
 
   const p5 = proj.find((r) => r.event === nextEvent + 4) || proj[Math.min(4, proj.length - 1)];
@@ -200,7 +215,7 @@ export function planTransfers(model: any, pickIds: number[], bank: number) {
       const s = best[0];
       sq = sq.filter((x) => x !== s.out_id); sq.push(s.in_id);
       bk = +(bk + s.out_price - s.in_price).toFixed(1);
-      plan.push({ gw, out: s.out, in: s.in, gain: s.gain, bank_after: bk });
+      plan.push({ gw, out: s.out, in: s.in, gain: s.gain, bank_after: bk, out_id: s.out_id, in_id: s.in_id });
     } else plan.push({ gw, out: "-", in: "hold (no clear gain)", gain: 0, bank_after: bk });
   }
   return { available: true, bank: +bank.toFixed(1), free_transfers: 1, horizon: cfg.horizon, single_transfers: singles, plan_5gw: plan, note: "Sell prices approximated as current price; verify in the FPL app." };
